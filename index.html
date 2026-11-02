@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speech Quality Listening Test</title>
+<style>
+  /* Layout: one centred column, one task per screen, large touch targets for phones */
+  :root {
+    --bg:#f4f6f5; --card:#ffffff; --ink:#18201d; --muted:#5b6762; --line:#d6ddd9;
+    --accent:#22675a; --accent-ink:#ffffff; --accent-soft:#e3efeb; --warn:#a2382a;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#121816; --card:#1b2421; --ink:#e7eeeb; --muted:#9aa8a2; --line:#2e3a36;
+            --accent:#5fb3a1; --accent-ink:#0d1513; --accent-soft:#1f322d; --warn:#ef8a78; color-scheme:dark; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.5 var(--font); }
+  main { max-width:640px; margin:0 auto; padding-block:24px 64px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-size:1.45rem; line-height:1.25; margin:0 0 6px; text-wrap:balance; }
+  h2 { font-size:1.1rem; margin:0 0 10px; }
+  p { margin:0 0 12px; }
+  .muted { color:var(--muted); font-size:.95rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin:16px 0; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:10px; padding:12px 16px; min-height:48px; cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  button.playing { outline:3px solid var(--accent); outline-offset:2px; }
+  button.heard { border-color:var(--accent); }
+  input[type=text], select { font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); width:100%; }
+  label { display:block; margin:10px 0 4px; font-weight:600; }
+  .plays { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  .choices .wide { grid-column:1 / -1; }
+  .choice[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent); font-weight:600; }
+  .progress { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin:10px 0 0; }
+  .progress > div { height:100%; background:var(--accent); transition:width .2s; }
+  .msg { color:var(--warn); min-height:1.5em; margin-top:10px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:16px; }
+  ul { padding-left:20px; margin:0; } li { margin:6px 0; }
+  .tones { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (prefers-reduced-motion: reduce) { .progress > div { transition:none; } }
+</style>
+</head>
+<body>
+<main id="app"><p>Loading…</p></main>
+<script>
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxbbsjxcXG3pyenf1BHLRF86uk73Qghoi6Y0AvEHXLFTw2e2eJxHJQFQ_y8VT4RCgJYVw/exec
+";          // Google Apps Script web app URL (set by prepare_ab_clips.py)
+const PAGES = [{"id": "p01", "ref": "3a6ef8d3", "a": "043f9f5b", "b": "8a88ce1b"}, {"id": "p02", "ref": "3a6ef8d3", "a": "043f9f5b", "b": "6afa2b31"}, {"id": "p03", "ref": "f55ee054", "a": "d1e29034", "b": "be3b496e"}, {"id": "p04", "ref": "f55ee054", "a": "d1e29034", "b": "d734fc4a"}, {"id": "p05", "ref": "3e289120", "a": "df2986b2", "b": "ca482b40"}, {"id": "p06", "ref": "3e289120", "a": "df2986b2", "b": "469855d2"}, {"id": "p07", "ref": "dc78752d", "a": "5fee13c8", "b": "cfba5e78"}, {"id": "p08", "ref": "dc78752d", "a": "5fee13c8", "b": "4febec70"}, {"id": "p09", "ref": "69190876", "a": "2c2dba9d", "b": "4c8da302"}, {"id": "p10", "ref": "69190876", "a": "2c2dba9d", "b": "43d803af"}, {"id": "p11", "ref": "e74c3167", "a": "888debe9", "b": "64adbcea"}, {"id": "p12", "ref": "e74c3167", "a": "888debe9", "b": "a969bd91"}, {"id": "p13", "ref": "1adc2207", "a": "63a362b4", "b": "8c285417"}, {"id": "p14", "ref": "1adc2207", "a": "63a362b4", "b": "4f77abb9"}, {"id": "p15", "ref": "309535be", "a": "e61f1bf9", "b": "491bb117"}, {"id": "p16", "ref": "309535be", "a": "e61f1bf9", "b": "637c119a"}, {"id": "p17", "ref": "a13bb87b", "a": "a5d50dd0", "b": "f0708bb1"}, {"id": "p18", "ref": "a13bb87b", "a": "a5d50dd0", "b": "899147e0"}, {"id": "p19", "ref": "078e2649", "a": "250e0c17", "b": "c44de1c6"}, {"id": "p20", "ref": "078e2649", "a": "250e0c17", "b": "d7879ce4"}, {"id": "p21", "ref": "10481dfa", "a": "4d7a6404", "b": "8839cef1"}, {"id": "p22", "ref": "10481dfa", "a": "4d7a6404", "b": "3f87175d"}, {"id": "p23", "ref": "5387d29c", "a": "12b8b80d", "b": "1e17b082"}, {"id": "p24", "ref": "5387d29c", "a": "12b8b80d", "b": "7fae0a6b"}, {"id": "c01", "ref": "d0b63899", "a": "5859b6d7", "b": "f9b75d10"}, {"id": "c02", "ref": "cef48cda", "a": "c72877b1", "b": "a97fee94"}, {"id": "c03", "ref": "2b186e16", "a": "8fc37287", "b": "7e41fade"}, {"id": "c04", "ref": "504d7d95", "a": "7687a074", "b": "eb74268f"}];
+const STORE = "abtest_v1";
+const app = document.getElementById("app");
+let S = null;
+let audio = new Audio(); let playingBtn = null; let ctx = null;
+
+function el(tag, attrs = {}, ...kids) { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); } for (const k of kids) if (k !== null && k !== undefined && k !== false) e.append(k); return e; }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+function load() { try { return JSON.parse(localStorage.getItem(STORE) || "null"); } catch (e) { return null; } }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(a, r) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function newId() { return Math.random().toString(36).slice(2, 10); }
+
+function stop() { audio.pause(); if (playingBtn) playingBtn.classList.remove("playing"); playingBtn = null; }
+function play(src, btn, onplayed) {
+  if (playingBtn === btn) { stop(); return; }
+  stop(); audio = new Audio(src); playingBtn = btn; btn.classList.add("playing");
+  audio.addEventListener("ended", () => { if (playingBtn === btn) stop(); });
+  audio.addEventListener("playing", () => onplayed && onplayed(), { once: true });
+  audio.play().catch(e => { if (e && e.name === "AbortError") return; stop(); showMsg("The audio could not play. Please try Chrome or Safari, and check that the volume is up."); });
+}
+function showMsg(t) { const m = document.querySelector(".msg"); if (m) m.textContent = t; }
+
+/* ---------- 1. Welcome ---------- */
+function welcome() {
+  const saved = load();
+  if (saved && saved.stage && saved.stage !== "done") {
+    app.replaceChildren(el("h1", {}, "Welcome back"),
+      el("div", { class: "card" }, el("p", {}, `You have a test in progress (page ${Math.min(saved.idx + 1, saved.order.length)} of ${saved.order.length}).`),
+        el("div", { class: "row" }, el("button", { class: "primary", onclick: () => { S = saved; route(); } }, "Continue"),
+          el("button", { onclick: () => { try { localStorage.removeItem(STORE); } catch (e) {} welcome(); } }, "Start over"))));
+    return;
+  }
+  const name = el("input", { type: "text", id: "lname", placeholder: "Your initials or a nickname", autocomplete: "off" });
+  const dev = el("select", { id: "device" }, el("option", { value: "" }, "Choose…"),
+    el("option", {}, "Wired headphones or earphones"), el("option", {}, "Wireless (Bluetooth) headphones or earbuds"),
+    el("option", {}, "Laptop or phone speaker"));
+  const go = () => {
+    if (!name.value.trim()) return showMsg("Please enter your initials or a nickname.");
+    if (!dev.value) return showMsg("Please tell us what you are listening with.");
+    if (dev.value.startsWith("Laptop")) return showMsg("This test needs headphones or earphones. Please connect them and choose again.");
+    const r = rng(Math.floor(Math.random() * 2 ** 31));
+    const scored = shuffle(PAGES.map(p => p.id), r);
+    const flips = Object.fromEntries(PAGES.map(p => [p.id, r() < 0.5]));
+    S = { id: newId(), listener: name.value.trim(), device: dev.value, stage: "volume", hp: { trial: 0, correct: 0, seq: [] },
+          order: scored, flips, idx: 0, answers: [], started: new Date().toISOString() };
+    save(); route();
+  };
+  app.replaceChildren(
+    el("h1", {}, "Which recording sounds better?"),
+    el("p", { class: "muted" }, `About 10 minutes · ${PAGES.length} short questions · headphones required`),
+    el("div", { class: "card" }, el("h2", {}, "What you will do"),
+      el("ul", {}, el("li", {}, "Listen to a clean recording of a sentence (the Reference)."),
+        el("li", {}, "Then listen to two processed versions, A and B, of the same sentence."),
+        el("li", {}, "Choose which one sounds closer to the Reference and more pleasant overall, or say you hear no difference."),
+        el("li", {}, "There are no right or wrong answers, except on a few easy check questions."))),
+    el("div", { class: "card" },
+      el("label", { for: "lname" }, "Your initials or a nickname"), name,
+      el("label", { for: "device" }, "What are you listening with?"), dev,
+      el("p", { class: "muted", style: "margin-top:12px" }, "Your answers are used only for research on speech enhancement. Only the nickname you enter is stored, with your device type."),
+      el("div", { class: "row" }, el("span"), el("button", { class: "primary", onclick: go }, "Start")), el("div", { class: "msg" })));
+}
+
+/* ---------- 2. Volume + headphone check (Woods et al., 2017) ---------- */
+function ac() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; }
+function tone(kind) {                       // kind: "normal" | "quiet" | "anti"
+  const c = ac(), sr = c.sampleRate, n = Math.floor(sr * 1.0), b = c.createBuffer(2, n, sr);
+  const g = kind === "quiet" ? 0.5 : 1.0, amp = 0.25 * g;
+  const L = b.getChannelData(0), R = b.getChannelData(1);
+  for (let i = 0; i < n; i++) {
+    const ramp = Math.min(1, i / (0.1 * sr), (n - i) / (0.1 * sr));
+    const v = amp * ramp * Math.sin(2 * Math.PI * 200 * i / sr);
+    L[i] = v; R[i] = kind === "anti" ? -v : v;
+  }
+  return b;
+}
+function playTriplet(order, onDone) {
+  const c = ac(); let t = c.currentTime + 0.15;
+  order.forEach((k, i) => { const s = c.createBufferSource(); s.buffer = tone(k); s.connect(c.destination); s.start(t); if (i === order.length - 1) s.onended = onDone; t += 1.5; });
+}
+function volume() {
+  const btn = el("button", { class: "primary" }, "Play a test sound");
+  let heard = false;
+  btn.addEventListener("click", () => { heard = true; playTriplet(["normal"], () => {}); });
+  app.replaceChildren(el("h1", {}, "Set your volume"),
+    el("div", { class: "card" }, el("p", {}, "Put on your headphones. Play the sound and set the volume to a comfortable level. Keep this volume for the whole test."),
+      btn, el("div", { class: "row" }, el("span"), el("button", { onclick: () => { if (!heard) return showMsg("Please play the test sound first."); S.stage = "hpcheck"; save(); route(); } }, "Next")), el("div", { class: "msg" })));
+}
+function hpcheck() {
+  const TRIALS = 6, PASS = 5;
+  if (S.hp.trial >= TRIALS) {
+    if (S.hp.correct >= PASS) { S.stage = "test"; save(); return route(); }
+    S.stage = "hpfail"; save(); return route();
+  }
+  const r = rng(S.hp.trial * 977 + S.id.length * 31 + S.id.charCodeAt(0));
+  const order = shuffle(["normal", "quiet", "anti"], r);
+  const answer = order.indexOf("quiet");
+  let played = false, picked = null;
+  const playBtn = el("button", { class: "primary" }, "Play the three sounds");
+  playBtn.addEventListener("click", () => { playBtn.disabled = true; playTriplet(order, () => { played = true; playBtn.disabled = false; playBtn.textContent = "Play again"; }); });
+  const picks = [0, 1, 2].map(i => { const b = el("button", { class: "choice", "aria-pressed": "false" }, ["First", "Second", "Third"][i]);
+    b.addEventListener("click", () => { picked = i; picks.forEach((x, j) => x.setAttribute("aria-pressed", String(j === i))); }); return b; });
+  const next = () => {
+    if (!played) return showMsg("Please play the sounds first.");
+    if (picked === null) return showMsg("Please choose the quietest sound.");
+    S.hp.seq.push({ order: order.join("-"), picked, correct: picked === answer });
+    if (picked === answer) S.hp.correct++;
+    S.hp.trial++; save(); hpcheck();
+  };
+  app.replaceChildren(el("h1", {}, `Headphone check ${S.hp.trial + 1} of ${TRIALS}`),
+    el("div", { class: "card" }, el("p", {}, "You will hear three tones. Which one is the quietest?"), playBtn,
+      el("div", { class: "tones", style: "margin-top:14px" }, ...picks),
+      el("div", { class: "row" }, el("span", { class: "muted" }, "This check confirms you are wearing headphones."), el("button", { onclick: next }, "Next")), el("div", { class: "msg" })));
+  window.__hpAnswer = answer;               // used only by automated tests
+}
+function hpfail() {
+  app.replaceChildren(el("h1", {}, "Headphones not detected"),
+    el("div", { class: "card" }, el("p", {}, "The check suggests the sound is not reaching you through headphones (or one side is not working). Please connect wired or wireless headphones, make sure both sides play, and try once more."),
+      el("div", { class: "row" }, el("span"), el("button", { class: "primary", onclick: () => { S.hpAttempts = (S.hpAttempts || 1) + 1; S.hp = { trial: 0, correct: 0, seq: [] };
+        if (S.hpAttempts > 2) { S.stage = "excluded"; save(); return route(); } S.stage = "volume"; save(); route(); } }, "Try again"))));
+}
+function excluded() {
+  app.replaceChildren(el("h1", {}, "Thank you"), el("div", { class: "card" }, el("p", {}, "Unfortunately the headphone check could not be passed, so we cannot use answers from this device. Thank you for your time.")));
+}
+
+/* ---------- 3. A/B pages ---------- */
+function test() {
+  if (S.idx >= S.order.length) { S.stage = "submit"; save(); return route(); }
+  const p = PAGES.find(x => x.id === S.order[S.idx]);
+  const flip = S.flips[p.id];
+  const left = flip ? p.b : p.a, right = flip ? p.a : p.b;
+  const heard = new Set(); let choice = null; const t0 = Date.now();
+  const mk = (label, code, key) => { const b = el("button", {}, label); b.addEventListener("click", () => play(`audio/${code}.wav`, b, () => { heard.add(key); b.classList.add("heard"); })); return b; };
+  const choices = [["A", "A sounds better"], ["B", "B sounds better"], ["same", "No difference I can hear"]].map(([v, t]) => {
+    const b = el("button", { class: "choice" + (v === "same" ? " wide" : ""), "aria-pressed": "false" }, t);
+    b.addEventListener("click", () => { choice = v; choices.forEach(x => x.setAttribute("aria-pressed", String(x === b))); }); return b; });
+  const next = () => {
+    if (!heard.has("A") || !heard.has("B")) return showMsg("Please listen to both A and B (and the Reference if you like) before choosing.");
+    if (!choice) return showMsg("Please choose an answer.");
+    stop();
+    S.answers.push({ page: p.id, left, right, choice, ms: Date.now() - t0 });
+    S.idx++; save(); window.scrollTo(0, 0); test();
+  };
+  app.replaceChildren(
+    el("h1", {}, `Question ${S.idx + 1} of ${S.order.length}`),
+    el("div", { class: "progress" }, el("div", { style: `width:${100 * S.idx / S.order.length}%` })),
+    el("div", { class: "card" },
+      el("p", { class: "muted" }, "Listen to the Reference, then to A and B. Which is closer to the Reference and more pleasant?"),
+      el("div", { class: "plays" }, mk("Reference", p.ref, "R"), mk("A", left, "A"), mk("B", right, "B")),
+      el("div", { class: "choices", style: "margin-top:16px" }, ...choices)),
+    el("div", { class: "row" }, el("span", { class: "muted" }, "You can replay any sound."), el("button", { class: "primary", onclick: next }, S.idx === S.order.length - 1 ? "Finish" : "Next")),
+    el("div", { class: "msg" }));
+}
+
+/* ---------- 4. Submit ---------- */
+function payload() {
+  return { session: S.id, listener: S.listener, device: S.device, started: S.started, finished: new Date().toISOString(),
+           headphone_correct: S.hp.correct, headphone_trials: S.hp.seq.length, headphone_attempts: S.hpAttempts || 1,
+           user_agent: navigator.userAgent, answers: S.answers };
+}
+async function submit() {
+  app.replaceChildren(el("h1", {}, "Saving your answers…"), el("div", { class: "card" }, el("p", { class: "muted" }, "Please keep this page open for a moment.")));
+  const body = JSON.stringify(payload());
+  let ok = false;
+  try {
+    await fetch(ENDPOINT, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body });
+    ok = true;                                // no-cors hides the reply; a network failure throws instead
+  } catch (e) { ok = false; }
+  S.stage = ok ? "done" : "submit"; S.sent = ok; save();
+  if (ok) return done();
+  app.replaceChildren(el("h1", {}, "Could not send your answers"),
+    el("div", { class: "card" }, el("p", {}, "Your internet connection seems to be off. Your answers are kept on this device. Reconnect and press Send again."),
+      el("div", { class: "row" }, el("button", { onclick: () => { const blob = new Blob([body], { type: "application/json" }); const a = el("a", { href: URL.createObjectURL(blob), download: `abtest_${S.listener}.json` }); document.body.append(a); a.click(); a.remove(); } }, "Save a copy to this device"),
+        el("button", { class: "primary", onclick: submit }, "Send again"))));
+}
+function done() {
+  app.replaceChildren(el("h1", {}, "Thank you!"),
+    el("div", { class: "card" }, el("p", {}, "Your answers have been sent. You can close this page."),
+      el("p", { class: "muted" }, `Reference code: ${S.id}`)));
+}
+
+function route() {
+  if (!S) return welcome();
+  ({ volume, hpcheck, hpfail, excluded, test, submit, done }[S.stage] || welcome)();
+}
+if (!PAGES.length) app.textContent = "This page was not set up: run prepare_ab_clips.py with --page.";
+else route();
+</script>
+</body>
+</html>
